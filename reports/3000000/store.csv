@@ -1,0 +1,2 @@
+scale,raw_bytes,disk_bytes,disk_savings_pct,mutable_ram_bytes,succinct_ram_bytes,ram_per_key_bytes,ingest_rate_sec,lookup_avg_micros,duration_ms
+3000000,578412378,520234186,10.06,83850666,11907246,3.97,2266.2,3.06,1323801

@@ -1,0 +1,25 @@
+# Rust build artifacts
+/target
+Cargo.lock.d
+
+# Local storage databases & temporary logs
+.urls_store/
+urls_store/
+*.urls_store/
+*.urls_store
+*.log
+
+# Large local input datasets (preserve reports/ CSV outputs)
+list.csv
+common.csv
+/data/*.csv
+/data/*.tsv
+/data/*.txt
+!/data/README.md
+
+# IDE & OS metadata
+.DS_Store
+.idea/
+.vscode/
+*.swp
+*~
