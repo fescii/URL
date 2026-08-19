@@ -1,26 +1,26 @@
 # URLs
 
-A high-performance, zero-copy, multi-tier URL compression and succinct storage engine built with Rust.
-
-`urls` compacts web identifiers and massive URL corpora into ultra-short codes and minimal memory structures using layered algorithmic codecs, bit-parallel positional deltas, and minimal perfect hash function (MPHF) indexing.
+> **Modern URLs are obnoxious.** They look like someone threw a dictionary at a query parameter, attached 14 UTM trackers, and set fire to your clipboard.
+> 
+> `urls` is an aggressive URL shrink ray written in Rust. It crushes bloated web links into 5-character nuggets without a database if you don't want one, or stuffs **4.3 million URLs into less RAM than a single browser tab** (literally ~14 MB) if you do.
 
 ---
 
-## Features
+## What is this witchcraft?
 
-- **Multi-Tier Compression Pipeline**:
-  - **Tier 1 (Algorithmic / Stateless)**: Myers bit-parallel positional deltas against structural centroid anchors.
-  - **Tier 1.5 (Entropy / Structural)**: Fast Static Symbol Tables (FSST), Re-Pair grammar compaction, and Asymmetric Numeral Systems (rANS).
-  - **Tier 2 (Succinct Sharded Store)**: Dynamic 5–11 character shortcodes (`0-9A-Za-z.~-_`) providing up to **-98.0% size reduction** per URL string.
-- **Succinct MPHF In-Memory Index**:
-  - Compacts 4.31+ million URLs into **14.9 MB of RAM** (**3.62 Bytes / Key**), delivering an **>85% RAM reduction** compared to traditional hash tables.
-- **Zero-Copy Memory-Mapped Storage**:
-  - Sharded Bitcask append-only data logs with memory-mapped readers (`Mmap`) returning zero-copy `bytes::Bytes` slices directly from disk cache.
-  - Zero heap allocations on the point query read path.
-- **Adaptive Run-Length Encoding & Front-Coding**:
-  - Deduplicates repetitive query parameter sequences, long alphanumeric runs, and sorted chunk prefixes without expansion overhead.
-- **High-Throughput CLI & HTTP Server**:
-  - Batch ingestion and reporting sustaining **>2,200 URLs/sec** with sub-microsecond in-memory lookups.
+Most URL shorteners cheat: they take a URL, throw an auto-incrementing ID into Postgres, slap Redis in front, and pray the server doesn't run out of memory when real traffic arrives.
+
+`urls` does it differently:
+
+- **The "Look Ma, No Database" Mode (Stateless)**:
+  Squeezes monstrous 250-character links into self-contained algorithmic codes using bitmask positional deltas and structural grammars. No store, no lookups, no state. Just pure decompression on the fly.
+- **The "Hold My RAM" Mode (Stateful Store)**:
+  If you want ultra-tiny 5-character links (`Urh7.`), it stores them in an append-only log and indexes millions of entries with Minimal Perfect Hashing.
+  - **4,313,006 URLs fit inside 14.9 MB of RAM**. That's **3.6 bytes per key**. Your smart fridge could index the top 5 million websites without flinching.
+- **Direct Memory Reads**:
+  When looking up links, bytes are sliced straight from memory-mapped disk logs without copying buffers or allocating heap memory.
+- **Adaptive String Squashing**:
+  Repetitive query strings, long IDs, and repeated paths get collapsed with tagged run-length and prefix deduping so you don't store the same `https://` a million times.
 
 ---
 
