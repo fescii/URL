@@ -1,0 +1,12 @@
+[book]
+authors = ["fescii"]
+language = "en"
+multilingual = false
+src = "src"
+title = "URLs Documentation"
+
+[output.html]
+git-repository-url = "https://github.com/fescii/URL"
+edit-url-template = "https://github.com/fescii/URL/edit/main/docs/src/{path}"
+site-url = "/URL/"
+cname = ""
