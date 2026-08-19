@@ -118,4 +118,16 @@ impl Store {
   pub fn memory_size(&self) -> usize {
     self.shards.iter().map(|s| s.memory_size()).sum()
   }
+
+  /// Total stored on-disk footprint in bytes across all shard logs.
+  pub fn disk_size(&self) -> u64 {
+    let mut total = 0u64;
+    for (i, _) in self.shards.iter().enumerate() {
+      let path = self.dir.join(format!("shard_{i}.log"));
+      if let Ok(meta) = fs::metadata(&path) {
+        total += meta.len();
+      }
+    }
+    total
+  }
 }

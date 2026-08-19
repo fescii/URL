@@ -9,6 +9,10 @@ urls_store/
 *.urls_store
 *.log
 
+# Standalone subprojects (managed with their own .git)
+/node/
+/web/
+
 # Large local input datasets (preserve reports/ CSV outputs)
 list.csv
 common.csv

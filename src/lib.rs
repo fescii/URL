@@ -5,6 +5,7 @@ pub mod commands;
 pub mod containers;
 pub mod design;
 pub mod entropies;
+pub mod ffi;
 pub mod grammars;
 pub mod hashes;
 pub mod ingests;
@@ -248,6 +249,17 @@ pub fn shorten(url: &str, store: Option<&mut Store>) -> Result<String> {
   st.put_key(&shortcut, url.as_bytes())?;
   crate::debug!("shortened url shortcut={shortcut} len={}", shortcut.len());
   Ok(shortcut)
+}
+
+/// Expand stateful or stateless shortcode back to original URL bytes.
+pub fn expand(key: &str, store: &mut Store) -> Result<bytes::Bytes> {
+  if let Some(bytes) = store.get_key(key)? {
+    Ok(bytes)
+  } else {
+    // If not found in stateful store, attempt algorithmic stateless decode
+    let decoded = decode(key)?;
+    Ok(bytes::Bytes::from(decoded.into_bytes()))
+  }
 }
 
 /// Decode multiple compressed shortcodes in batch.

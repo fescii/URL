@@ -5,6 +5,9 @@ edition = "2024"
 description = "Zero-storage URL compressor and portable link container"
 authors = ["Femar"]
 
+[lib]
+crate-type = ["cdylib", "rlib"]
+
 [dependencies]
 blake3 = "1.5"
 bytes = "1"
