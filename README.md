@@ -6,6 +6,18 @@
 
 ---
 
+## Live Production Service
+
+The web application and telemetry dashboard are deployed live in production on Fly.io:
+
+| Resource | URL | Description |
+| :--- | :--- | :--- |
+| **Interactive Dashboard** | [https://urls.aduki.pro](https://urls.aduki.pro) | Web UI, Single URL Shrink Ray, Batch Ingestion & PDF Export |
+| **Telemetry Dashboard** | [https://urls.aduki.pro/stats](https://urls.aduki.pro/stats) | Live RAM, latency breakdown ($3.06\,\mu\text{s}$ $p50$), and shard diagnostics |
+| **Health JSON Endpoint** | [https://urls.aduki.pro/health](https://urls.aduki.pro/health) | Lightweight health & engine readiness probe |
+
+---
+
 ## What is this witchcraft?
 
 Most URL shorteners cheat: they take a URL, throw an auto-incrementing ID into Postgres, slap Redis in front, and pray the server doesn't run out of memory when real traffic arrives.
@@ -15,7 +27,7 @@ Most URL shorteners cheat: they take a URL, throw an auto-incrementing ID into P
 - **The "Look Ma, No Database" Mode (Stateless)**:
   Squeezes monstrous 250-character links into self-contained algorithmic codes using bitmask positional deltas and structural grammars. No store, no lookups, no state. Just pure decompression on the fly.
 - **The "Hold My RAM" Mode (Stateful Store)**:
-  If you want ultra-tiny 5-character links (`Urh7.`), it stores them in an append-only log and indexes millions of entries with Minimal Perfect Hashing.
+  If you want ultra-tiny 5-character links (`058qV`), it stores them in an append-only log and indexes millions of entries with Minimal Perfect Hashing.
   - **4,313,006 URLs fit inside 14.9 MB of RAM**. That's **3.6 bytes per key**. Your smart fridge could index the top 5 million websites without flinching.
 - **Direct Memory Reads**:
   When looking up links, bytes are sliced straight from memory-mapped disk logs without copying buffers or allocating heap memory.
@@ -24,7 +36,7 @@ Most URL shorteners cheat: they take a URL, throw an auto-incrementing ID into P
 
 ---
 
-## Benchmark Results (1K → 4.31M URLs)
+## Empirical Benchmarks (1K → 4.31M Scale)
 
 Benchmarked on real-world web corpora (`list.csv`) across 10 distinct scale increments:
 
@@ -41,81 +53,212 @@ Benchmarked on real-world web corpora (`list.csv`) across 10 distinct scale incr
 | **3,000,000** | 551.62 MB | 496.13 MB | **10.06%** | 79.97 MB (28.0 B/key) | 11.36 MB (**3.97 B/key**) | 2,266 URLs/s | 3.06 µs |
 | **4,313,006** | 793.83 MB | 713.97 MB | **10.06%** | 101.44 MB (24.7 B/key) | 14.91 MB (**3.62 B/key**) | 2,224 URLs/s | 111.93 µs |
 
-Detailed per-scale reports and measurement datasets are available in `reports/` (e.g. `reports/1000/`, `reports/4313006/`, `reports/summary.md`, and `reports/summary.csv`).
+---
+
+## Live API Reference
+
+All HTTP endpoints are available at `https://urls.aduki.pro` (or locally at `http://localhost:3000`):
+
+### 1. Shorten URL (Stateful)
+Generate a compact Base66 5-character key and index it with zero-copy mmap.
+
+- **Endpoint**: `POST /api/shorten`
+- **Request**:
+  ```bash
+  curl -s -X POST https://urls.aduki.pro/api/shorten \
+    -H "Content-Type: application/json" \
+    -d '{"url":"https://github.com/rust-lang/rust"}'
+  ```
+- **Response**:
+  ```json
+  {
+    "key": "058qV",
+    "url": "https://github.com/rust-lang/rust",
+    "shortUrl": "https://urls.aduki.pro/058qV",
+    "statelessCode": "058qV",
+    "savedBytes": 5,
+    "ratio": "84.8%"
+  }
+  ```
 
 ---
 
-## Installation
+### 2. Follow Redirect
+Resolves a 5-character shortcode directly to the destination URL.
 
-### Linux & macOS (One-Line Installer)
+- **Endpoint**: `GET /:key`
+- **Request**:
+  ```bash
+  curl -sI https://urls.aduki.pro/058qV
+  ```
+- **Response**:
+  ```http
+  HTTP/2 302 Found
+  location: https://github.com/rust-lang/rust
+  ```
+
+---
+
+### 3. Streaming Batch Ingestion
+Stream large datasets (CSV, TSV, TXT up to 100 MB) in chunked batches into sharded logs.
+
+- **Endpoint**: `POST /api/batch`
+- **Request**:
+  ```bash
+  curl -s -X POST https://urls.aduki.pro/api/batch \
+    -H "Content-Type: application/json" \
+    -d '{"urls":["https://github.com/rust-lang/rust", "https://news.ycombinator.com"]}'
+  ```
+- **Response**:
+  ```json
+  {
+    "success": true,
+    "count": 2,
+    "durationMs": "1.45",
+    "ratePerSec": 1379,
+    "items": [
+      {
+        "url": "https://github.com/rust-lang/rust",
+        "key": "058qV",
+        "shortUrl": "https://urls.aduki.pro/058qV"
+      }
+    ],
+    "stats": {
+      "keys": 2,
+      "ramBytes": 140,
+      "diskBytes": 301,
+      "bytesPerKey": 70.0
+    }
+  }
+  ```
+
+---
+
+### 4. Algorithmic Codec (Stateless)
+Encode and decode URLs algorithmically with zero database storage.
+
+- **Endpoint**: `POST /api/encode`
+- **Encode Request**:
+  ```bash
+  curl -s -X POST https://urls.aduki.pro/api/encode \
+    -H "Content-Type: application/json" \
+    -d '{"input":"https://github.com/rust-lang/rust","action":"encode"}'
+  ```
+- **Decode Request**:
+  ```bash
+  curl -s -X POST https://urls.aduki.pro/api/encode \
+    -H "Content-Type: application/json" \
+    -d '{"input":"058qV","action":"decode"}'
+  ```
+
+---
+
+### 5. Live Memory & Shard Telemetry
+Retrieve real-time RAM consumption, indexed key counts, and disk footprint.
+
+- **Endpoint**: `GET /api/stats`
+- **Request**:
+  ```bash
+  curl -s https://urls.aduki.pro/api/stats
+  ```
+- **Response**:
+  ```json
+  {
+    "success": true,
+    "keys": 4313006,
+    "ramBytes": 15634432,
+    "diskBytes": 748650496,
+    "bytesPerKey": 3.62,
+    "ramMb": "14.91",
+    "diskMb": "713.97"
+  }
+  ```
+
+---
+
+### 6. Health Probe
+Fast, unauthenticated health check probe.
+
+- **Endpoint**: `GET /health`
+- **Request**:
+  ```bash
+  curl -s https://urls.aduki.pro/health
+  ```
+- **Response**:
+  ```json
+  {
+    "status": "ok",
+    "engine": "ready",
+    "version": "0.1.0-ffi",
+    "keys": 4313006,
+    "ramBytes": 15634432,
+    "diskBytes": 748650496,
+    "bytesPerKey": 3.62
+  }
+  ```
+
+---
+
+## Running Live Benchmark Tests
+
+### 1. Pre-generated Test Datasets (5,000 URLs)
+Test datasets extracted directly from `common.csv` & `list.csv` are located in `data/`:
+- **CSV Dataset**: [data/urls_5000.csv](file:///home/femar/Downloads/URL/data/urls_5000.csv) (5,000 records with `id,domain,url`)
+- **TSV Dataset**: [data/urls_5000.tsv](file:///home/femar/Downloads/URL/data/urls_5000.tsv) (5,000 tab-separated records)
+- **TXT Dataset**: [data/urls_5000.txt](file:///home/femar/Downloads/URL/data/urls_5000.txt) (5,000 raw newline-delimited URLs)
+
+To re-generate or modify the 5,000 test files:
 ```bash
-curl -fsSL https://raw.githubusercontent.com/fescii/URL/main/install.sh | bash
+python3 data/generate.py
 ```
 
-### Windows (PowerShell)
-```powershell
-irm https://raw.githubusercontent.com/fescii/URL/main/install.ps1 | iex
-```
+### 2. Ingest via Web UI
+1. Navigate to [https://urls.aduki.pro](https://urls.aduki.pro) (or `http://localhost:3000`).
+2. Click on the **Batch Ingest** tab.
+3. Upload `data/urls_5000.csv` (or `.tsv` / `.txt`).
+4. Click **Stream Ingest Batch** to monitor live ingestion speed (`URLs/s`) and generate a printable PDF report upon completion.
 
-### Build from Source (Cargo)
+### 3. Run Native Rust Test Suite
 ```bash
-git clone https://github.com/fescii/URL.git
-cd URL
-cargo build --release
+cargo test --release
 ```
 
 ---
 
 ## CLI Usage
 
-### 1. Stateless Encoding & Decoding (Tier 1 / 1.5)
-
+### 1. Stateless Encoding & Decoding
 ```bash
-# Encode URL into stateless algorithmic representation
+# Encode URL into stateless algorithmic code
 cargo run --release -- encode "https://shop.google.com/products/deals?id=123"
 
 # Decode stateless shortcode back to original URL
 cargo run --release -- decode "0CEbn5mgfiOdL~..."
 ```
 
-### 2. State-Backed Shortening & Retrieval (Tier 2)
-
+### 2. State-Backed Shortening & Retrieval
 ```bash
-# Generate compact 5-11 character shortcode stored in Bitcask database
+# Generate compact shortcode stored in Bitcask database
 cargo run --release -- shorten "https://shop.google.com/products/deals?id=123"
 
 # Expand shortcode to raw URL
-cargo run --release -- expand "Urh7."
+cargo run --release -- expand "058qV"
 ```
 
-### 3. Batch Corpus Ingestion
-
+### 3. Batch Corpus Ingestion & Sealing
 ```bash
-# Ingest CSV / TSV dataset into sharded storage and seal into succinct MPHF bitvectors
-cargo run --release -- ingest data/list.csv --dir .urls_store
+# Ingest CSV dataset and seal into succinct MPHF bitvectors
+cargo run --release -- ingest data/list.csv --dir .store
 ```
 
-### 4. Running the HTTP Server
-
+### 4. Standalone CLI HTTP Server
 ```bash
-# Launch high-performance redirect and lookup HTTP service
-cargo run --release -- serve --host 127.0.0.1 --port 8080 --store .urls_store
-```
-
-Endpoint examples:
-- `GET /:key` → HTTP 301/302 redirect or raw URL payload
-- `POST /shorten` → JSON payload `{"url": "https://..."}` returns `{"key": "Urh7."}`
-
-### 5. Multi-Scale Reporting Suite
-
-```bash
-# Run comprehensive benchmark suite across customized scales
-cargo run --release -- report --input data/list.csv --out reports --scales 1000,5000,10000,50000,100000,500000,1000000,2000000,3000000,4313006
+cargo run --release -- serve --host 127.0.0.1 --port 8080 --store .store
 ```
 
 ---
 
-## Architecture Overview
+## 🏛️ Architecture Overview
 
 ```
                    +-----------------------------------------------+
@@ -132,23 +275,15 @@ cargo run --release -- report --input data/list.csv --out reports --scales 1000,
                 v                                                     v
    +---------------------------+                         +---------------------------+
    |   Stateless Path (T1/1.5) |                         |  Stateful Path (Tier 2)   |
-   | - Myers Positional Delta  |                         | - 5-11 Char Base66 Code   |
-   | - FSST Static Symbols     |                         | - 4-Way Sharded Bitcask   |
+   | - Myers Positional Delta  |                         | - 5-Char Base66 Code      |
+   | - FSST Static Symbols     |                         | - 64-Way Sharded Bitcask  |
    | - Tagged Stream RLE       |                         | - Zero-Copy Mmap Logs     |
-   | - rANS Entropy / Grammar  |                         | - Succinct MPHF Index     |
+   | - rANS Entropy / Grammar  |                         | - Succinct MPHF (3.6 B/key)|
    +---------------------------+                         +---------------------------+
-```
-
-## Testing
-
-Run the full suite of 55 unit and integration tests:
-
-```bash
-cargo test --release
 ```
 
 ---
 
-## License
+## 📄 License
 
 Apache-2.0 / MIT
