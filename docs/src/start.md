@@ -6,6 +6,18 @@ Get up and running with `urls` in under two minutes.
 
 ## 1. Installation
 
+### Quick Install (Linux & macOS)
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/fescii/URL/main/install.sh | bash
+```
+
+### Quick Install (Windows)
+
+```powershell
+irm https://raw.githubusercontent.com/fescii/URL/main/install.ps1 | iex
+```
+
 ### From Source (Rust Cargo)
 
 Ensure you have Rust stable (1.80+) installed:

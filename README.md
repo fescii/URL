@@ -45,13 +45,22 @@ Detailed per-scale reports and measurement datasets are available in `reports/` 
 
 ---
 
-## Installation & Build
+## Installation
 
-Ensure you have Rust (stable 1.80+) installed.
-
+### Linux & macOS (One-Line Installer)
 ```bash
-git clone https://github.com/your-org/urls.git
-cd urls
+curl -fsSL https://raw.githubusercontent.com/fescii/URL/main/install.sh | bash
+```
+
+### Windows (PowerShell)
+```powershell
+irm https://raw.githubusercontent.com/fescii/URL/main/install.ps1 | iex
+```
+
+### Build from Source (Cargo)
+```bash
+git clone https://github.com/fescii/URL.git
+cd URL
 cargo build --release
 ```
 
